@@ -1,60 +1,97 @@
 #include <Arduino.h>
 
 #include "config.h"
-
-uint8_t RTS = 8;  // REQUEST TO SEND
-uint8_t CTS = 9;  // CLEAR TO SEND
+#include "RN2483.h"
+#include "logger.h"
 
 void blink(int times, int delayMS);
+void ledOff();
+void ledOn();
+char buf[100];
+int bytesRead;
+void handleCmd(const char cmd[]);
+void loop_receiver();
+void loop_sender();
 
 void setup()
 {
   // setup Serial
   Serial.begin(115200);
-#ifdef DEBUG
-  while (!Serial)
-    ;
-#endif
 
-  // setup UART to RN2483A module
-  Serial1.setTimeout(200);
-  Serial1.begin(57600);
-  pinMode(8, RTS); // D8 = UART-RTS
-  pinMode(9, CTS); // D9 = UART-CTS
-  digitalWrite(CTS, LOW); // do not send now
-  delay(200); // TODO needed?
-  
   // initialize LED digital pin as an output.
   pinMode(LED_BUILTIN, OUTPUT);
-  Serial.println("Hello world!");
 
-  // try to get version from the module
-  digitalWrite(CTS, HIGH);
-  Serial1.println("sys get ver");
-  Serial1.flush();
-  while(Serial1.available() == 0)
-  ;
-  char buf[100];
-  size_t read = Serial1.readBytes(buf, 100);
-  digitalWrite(CTS, LOW);
-  Serial.println(read);
+  // setup UART to RN2483A module
+  while (1)
+  {
+    Serial.println("Setting up communication to RN2483");
+    RN2483.setup();
+    bytesRead = RN2483.sendCommandRaw("sys get hweui", buf, 16 + 2);
+    if (bytesRead > 0)
+    {
+      break;
+    }
+  }
+  handleCmd("mac pause");
 
   Serial.println("Setup done!");
 }
 
 void loop()
 {
-  blink(2, 500);
+
+#ifdef RECEIVER
+  loop_receiver();
+#endif
+#ifndef RECEIVER
+  loop_sender();
+#endif
+}
+
+void loop_receiver()
+{
+  handleCmd("radio rx 2000");
+  RN2483.readResponse(buf, 100);
+  Serial.println(buf);
+}
+
+void loop_sender()
+{
+  handleCmd("radio tx 01");
+  RN2483.readResponse(buf, 100);
+  Serial.println(buf);
   delay(1000);
+  handleCmd("radio tx 00");
+  RN2483.readResponse(buf, 100);
+  Serial.println(buf);
+  delay(1000);
+}
+
+void handleCmd(const char cmd[])
+{
+  Serial.print(cmd);
+  Serial.print(": ");
+  RN2483.sendCommandRaw(cmd, buf, 100);
+  Serial.println(buf);
+}
+
+void ledOn()
+{
+  digitalWrite(LED_BUILTIN, LOW);
+}
+
+void ledOff()
+{
+  digitalWrite(LED_BUILTIN, HIGH);
 }
 
 void blink(int times, int delayMS)
 {
   while (times-- > 0)
   {
-    digitalWrite(LED_BUILTIN, 1);
+    ledOn();
     delay(delayMS);
-    digitalWrite(LED_BUILTIN, 0);
+    ledOff();
     delay(delayMS);
   }
 }

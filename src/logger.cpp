@@ -1,0 +1,16 @@
+
+#include "logger.h"
+
+Logger::Logger() {}
+
+void Logger::log(const char *input)
+{
+
+    size_t bufLen = strlen(input) + 12 + 1;
+    char buf[bufLen];
+    snprintf(buf, bufLen, "%lu: %s", millis(), input);
+
+    Serial.println(buf);
+}
+
+Logger Log;
