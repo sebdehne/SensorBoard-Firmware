@@ -3,36 +3,33 @@
 #include "config.h"
 #include "RN2483.h"
 #include "logger.h"
+#include <Wire.h>
+#include "DS3231.h"
 
 void blink(int times, int delayMS);
 void ledOff();
 void ledOn();
 char buf[100];
-int bytesRead;
 void handleCmd(const char cmd[]);
 void loop_receiver();
 void loop_sender();
+void loop_i2c();
 
 void setup()
 {
+  // takes 2000ms to come here after power up, due to bootloader
+
   // setup Serial
   Serial.begin(115200);
+  if (!Serial)
+    ;
 
   // initialize LED digital pin as an output.
   pinMode(LED_BUILTIN, OUTPUT);
 
-  // setup UART to RN2483A module
-  while (1)
-  {
-    Serial.println("Setting up communication to RN2483");
-    RN2483.setup();
-    bytesRead = RN2483.sendCommandRaw("sys get hweui", buf, 16 + 2);
-    if (bytesRead > 0)
-    {
-      break;
-    }
-  }
-  handleCmd("mac pause");
+  RN2483.setup();
+
+  DS3231.setup();
 
   Serial.println("Setup done!");
 }
@@ -43,9 +40,45 @@ void loop()
 #ifdef RECEIVER
   loop_receiver();
 #endif
-#ifndef RECEIVER
+#ifdef SENDER
   loop_sender();
 #endif
+#ifdef I2C
+  loop_i2c();
+#endif
+}
+
+void loop_i2c()
+{
+  bool hasTime = DS3231.hasTime();
+  Serial.print("Has time: ");
+  Serial.println(hasTime);
+  if (!hasTime)
+  {
+    Serial.println("Setting time...");
+    DS3231.setTime(50, 59, 23, 0, 28, 2, 1);
+    Serial.println("Setting time...Done");
+  }
+
+  DS3231.readTime();
+  Serial.print("Time: 20");
+  Serial.print(DS3231.getYear());
+  Serial.print("-");
+  Serial.print(DS3231.getMonth());
+  Serial.print("-");
+  Serial.print(DS3231.getDate());
+  Serial.print("T");
+  Serial.print(DS3231.getHour());
+  Serial.print(":");
+  Serial.print(DS3231.getMinutes());
+  Serial.print(":");
+  Serial.print(DS3231.getSeconds());
+  Serial.println();
+
+  Serial.print("Timestamp: ");
+  Serial.println(DS3231.getSecondsSince2000());
+
+  delay(1000);
 }
 
 void loop_receiver()

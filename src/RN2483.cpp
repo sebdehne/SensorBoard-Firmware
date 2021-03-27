@@ -6,19 +6,41 @@ RN2483Class::RN2483Class() {}
 
 void RN2483Class::setup()
 {
-    delay(100);
-    // break by keeping TX LOW for some time
-    pinMode(6, OUTPUT);
-    digitalWrite(6, LOW);
-    delay(100);
+    int bytesRead;
+    char buf[100];
 
-    Serial1.begin(57600);
-    Serial1.setTimeout(2000);
-    while (Serial1.available())
+    // @  0ms power on
+    // @ 99ms TX LOW->HIGH
+    // @257ms transmits its version number
+    // (but Seeeduino XIAO bootloader consumes 2000ms anyway)
+
+    // setup UART to RN2483A module
+    while (1)
     {
-        Serial.println("Need to read");
-        Serial1.read();
+        Serial.println("Setting up communication to RN2483...");
+        Serial1.end();
+
+        // reset
+        pinMode(8, OUTPUT);
+        digitalWrite(8, LOW);
+        delay(500);
+        digitalWrite(8, HIGH);
+        delay(100);
+
+        Serial1.begin(57600);
+        while (Serial1.available())
+        {
+            Serial.println("Need to read");
+            Serial1.read();
+        }
+
+        bytesRead = RN2483.sendCommandRaw("sys get hweui", buf, 16 + 2);
+        if (bytesRead > 0)
+        {
+            break;
+        }
     }
+    Serial.println("Setting up communication to RN2483...Done");
 }
 
 int RN2483Class::sendCommandRaw(const char cmd[], char *receiveBuf, size_t length)
@@ -26,7 +48,7 @@ int RN2483Class::sendCommandRaw(const char cmd[], char *receiveBuf, size_t lengt
     while (Serial1.available())
     {
         Serial1.read();
-        Log.log("Consuming before writing");
+        Serial.println("Consuming before writing");
     }
 
     // send cmd
@@ -35,7 +57,8 @@ int RN2483Class::sendCommandRaw(const char cmd[], char *receiveBuf, size_t lengt
     return readResponse(receiveBuf, length);
 }
 
-int RN2483Class::readResponse(char *receiveBuf, size_t length) {
+int RN2483Class::readResponse(char *receiveBuf, size_t length)
+{
     // read response
     unsigned long start = millis();
     int bytesRead = 0;
