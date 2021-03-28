@@ -3,10 +3,11 @@
 #include <Arduino.h>
 #include "Wire.h"
 
-class DS3231Class
+
+struct DateTime
 {
-private:
-    const byte i2c_addr = 104;
+    bool error;
+    unsigned long secondsSince2000;
     byte seconds;
     byte minutes;
     byte hour;
@@ -14,29 +15,29 @@ private:
     byte date;
     byte month;
     byte year;
+    bool alarm1Set;
+};
+
+
+class DS3231Class
+{
+private:
+    const byte i2c_addr = 104;
 
     bool setAddrForRead(byte addr);
+    unsigned long calcSecondsSince2000(DateTime dateTime);
+    DateTime calcDateTime(unsigned long secondsSince2000);
+    bool setTimeInternal(DateTime dateTime, bool writeAlarm1);
 
 public:
     DS3231Class();
-    void setup();
 
     bool hasTime();
-    void readTime();
-    unsigned long getSecondsSince2000();
+    DateTime readTime();
 
-    //                   0-59,         0-59,     00-23,          1-7,     01-31,      01-12,     00-99
-    void setTime(byte seconds, byte minutes, byte hour, byte weekDay, byte date, byte month, byte year);
-
-    byte getSeconds();
-    byte getMinutes();
-    byte getHour();
-    byte getWeekDay();
-    byte getDate();
-    byte getMonth();
-    byte getYear();
-
-    void setAlarm1(unsigned long seconds);
+    // setting the time clears also the alarms
+    bool setTime(unsigned long secondsSince2000);
+    bool setAlarm1(unsigned long deltaSeconds);
 };
 
 extern DS3231Class DS3231;

@@ -5,6 +5,7 @@
 #include "logger.h"
 #include <Wire.h>
 #include "DS3231.h"
+#include "ChipCap2.h"
 
 void blink(int times, int delayMS);
 void ledOff();
@@ -14,6 +15,7 @@ void handleCmd(const char cmd[]);
 void loop_receiver();
 void loop_sender();
 void loop_i2c();
+bool waitingForAlarm = false;
 
 void setup()
 {
@@ -21,64 +23,54 @@ void setup()
 
   // setup Serial
   Serial.begin(115200);
-  if (!Serial)
-    ;
 
   // initialize LED digital pin as an output.
   pinMode(LED_BUILTIN, OUTPUT);
 
   RN2483.setup();
 
-  DS3231.setup();
+  Wire.begin(); // used by DS3231 & ChipCap2
 
+  while (!DS3231.hasTime())
+  {
+    if (!DS3231.setTime(670238823))
+    {
+      Serial.println("Could not set time");
+      delay(1000);
+    }
+  }
+
+  delay(5000); // TODO remove
   Serial.println("Setup done!");
 }
 
 void loop()
 {
+  // 0) measure temp
+  TempAndHumidity tempAndHumidity = ChipCap2.read();
+  Serial.print("Temp: ");
+  Serial.println(tempAndHumidity.temp);
+  Serial.print("Humidity: ");
+  Serial.println(tempAndHumidity.humidity);
 
-#ifdef RECEIVER
-  loop_receiver();
-#endif
-#ifdef SENDER
-  loop_sender();
-#endif
-#ifdef I2C
-  loop_i2c();
-#endif
-}
+  // 1) send a msg over radio
+  handleCmd("mac pause");
+  char buf[100];
+  snprintf(buf, 100, "radio tx %08lx%08lx", tempAndHumidity.humidity, tempAndHumidity.temp);
+  handleCmd(buf);
 
-void loop_i2c()
-{
-  bool hasTime = DS3231.hasTime();
-  Serial.print("Has time: ");
-  Serial.println(hasTime);
-  if (!hasTime)
+  // 2) blink LED
+  blink(2, 500);
+
+  // 3) set alarm (=> cuts the power)
+  if (!DS3231.setAlarm1(20))
   {
-    Serial.println("Setting time...");
-    DS3231.setTime(50, 59, 23, 0, 28, 2, 1);
-    Serial.println("Setting time...Done");
+    Serial.println("Could not set alarm");
   }
 
-  DS3231.readTime();
-  Serial.print("Time: 20");
-  Serial.print(DS3231.getYear());
-  Serial.print("-");
-  Serial.print(DS3231.getMonth());
-  Serial.print("-");
-  Serial.print(DS3231.getDate());
-  Serial.print("T");
-  Serial.print(DS3231.getHour());
-  Serial.print(":");
-  Serial.print(DS3231.getMinutes());
-  Serial.print(":");
-  Serial.print(DS3231.getSeconds());
-  Serial.println();
-
-  Serial.print("Timestamp: ");
-  Serial.println(DS3231.getSecondsSince2000());
-
-  delay(1000);
+  ledOn();
+  while (1)
+    ;
 }
 
 void loop_receiver()
@@ -86,18 +78,6 @@ void loop_receiver()
   handleCmd("radio rx 2000");
   RN2483.readResponse(buf, 100);
   Serial.println(buf);
-}
-
-void loop_sender()
-{
-  handleCmd("radio tx 01");
-  RN2483.readResponse(buf, 100);
-  Serial.println(buf);
-  delay(1000);
-  handleCmd("radio tx 00");
-  RN2483.readResponse(buf, 100);
-  Serial.println(buf);
-  delay(1000);
 }
 
 void handleCmd(const char cmd[])
