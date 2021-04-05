@@ -29,6 +29,8 @@ void setup()
 
   RN2483.setup();
 
+  analogReadResolution(12);
+
   Wire.begin(); // used by DS3231 & ChipCap2
 
   while (!DS3231.hasTime())
@@ -40,7 +42,6 @@ void setup()
     }
   }
 
-  delay(5000); // TODO remove
   Serial.println("Setup done!");
 }
 
@@ -53,11 +54,24 @@ void loop()
   Serial.print("Humidity: ");
   Serial.println(tempAndHumidity.humidity);
 
-  // 1) send a msg over radio
+  // measure V_battery
+  unsigned long adcBattery = analogRead(PIN_A2);
+
+  // measure V_light sensor
+  unsigned long adcLight = analogRead(PIN_A3);
+
+  // config radio:
   handleCmd("mac pause");
+  handleCmd("radio set pwr -3");
+
+  // send data over radio
   char buf[100];
-  snprintf(buf, 100, "radio tx %08lx%08lx", tempAndHumidity.humidity, tempAndHumidity.temp);
+  snprintf(buf, 100, "radio tx %08lx%08lx%08lx%08lx", tempAndHumidity.humidity, tempAndHumidity.temp, adcLight, adcBattery);
   handleCmd(buf);
+  // wait for ack, otherwise retry after random delay
+  // but give up after X seconds
+
+  // if timestamp in ack is too different, adjust clock
 
   // 2) blink LED
   blink(2, 500);
