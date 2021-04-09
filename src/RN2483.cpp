@@ -1,6 +1,7 @@
 #include "RN2483.h"
 #include "logger.h"
 #include <Arduino.h>
+#include "utils.h"
 
 RN2483Class::RN2483Class() {}
 
@@ -77,7 +78,7 @@ int RN2483Class::readResponse(char *receiveBuf, size_t length)
     if (bytesRead == 0)
     {
         Serial.println("Could not read any bytes");
-        return 0;
+        return -1;
     }
 
     // find string end
@@ -94,13 +95,47 @@ int RN2483Class::readResponse(char *receiveBuf, size_t length)
     if (pos == -1)
     {
         Serial.println("Could not find LF");
-        return 0;
+        return -1;
     }
 
     // terminate string
     receiveBuf[pos] = 0;
 
     return pos;
+}
+
+bool RN2483Class::responseEqualsOK(char *receiveBuf, size_t length) {
+    char okStr[] = "ok";
+    return strncmp(receiveBuf, okStr, 2);
+}
+
+bool RN2483Class::responseEqualsRadioRx(char *receiveBuf, size_t length) {
+    char radioRxStr[] = "radio_rx ";
+    return strncmp(receiveBuf, radioRxStr, 9);
+}
+
+bool RN2483Class::transmitMessage(uint8_t type, unsigned long length, uint8_t payload[]) {
+    uint8_t data[255];
+
+    data[0] = LORA_ADDR; // from addr
+    data[1] = 1; // to addr
+    data[2] = type;
+    writeUint32(length, data, 3);
+
+    char hexString[255 * 2 + 1]; // max 255 bytes (1 bytes takes 2 chars + 1 for \0)
+    toHex((data + 7), length, hexString);
+
+    char cmdString[sizeof(hexString) + 10];
+    snprintf(cmdString, sizeof(cmdString), "radio tx %s", hexString);
+
+    char receiveBuf[100];
+    int bytesReceived = sendCommandRaw(cmdString, receiveBuf, 100);
+
+    // TODO responseEqualsOK
+    // listen and check for radio_tx_ok response as well? read doc
+
+    return false;
+    
 }
 
 RN2483Class RN2483;

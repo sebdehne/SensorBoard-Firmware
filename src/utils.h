@@ -1,5 +1,6 @@
 #ifndef _UTILS_H
 #define _UTILS_H
+#include <Arduino.h>
 
 void writeSerial16Bytes(unsigned char dst[], int dstOffset);
 void writeCharArray(char src[], int srcLength, unsigned char dst[], int dstOffset);
@@ -11,5 +12,8 @@ void writeBool(bool src, unsigned char dst[], int dstOffset);
 
 unsigned int toUInt(unsigned char src[], int srcOffset);
 int toInt(unsigned char src[], int srcOffset);
+
+void toHex(uint8_t *src, size_t srcLen, char *dstBuf);
+int toHexChar(int value);
 
 #endif

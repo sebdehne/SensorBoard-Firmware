@@ -73,3 +73,27 @@ int toInt(unsigned char src[], int srcOffset)
     result = result + src[srcOffset + 3];
     return result;
 }
+
+void toHex(uint8_t *src, size_t srcLen, char *dstBuf)
+{
+    uint8_t b;
+    while (srcLen-- > 0)
+    {
+        b = *src++;
+        *(dstBuf++) = toHexChar(b / 16);
+        *(dstBuf++) = toHexChar(b % 16);
+    }
+    *(dstBuf) = 0;
+}
+
+int toHexChar(int value)
+{
+    if (value > 9)
+    {
+        return 97 + (value - 10);
+    }
+    else
+    {
+        return 48 + value;
+    }
+}
