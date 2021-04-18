@@ -1,7 +1,5 @@
 
 RN2483 1.0.5 Oct 31 2018 15:06:52
-1: 0004A30B00F7C688
-2: 0004A30B00F7A8A9
 
 radio get afcbw: 41.7
 radio get bitrate: 50000

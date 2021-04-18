@@ -14,6 +14,8 @@ unsigned int toUInt(unsigned char src[], int srcOffset);
 int toInt(unsigned char src[], int srcOffset);
 
 void toHex(uint8_t *src, size_t srcLen, char *dstBuf);
+int fromHex(char *src, uint8_t *dstBuf, size_t dstLen);
 int toHexChar(int value);
+int fromHexChar(char c);
 
 #endif

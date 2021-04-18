@@ -1,4 +1,5 @@
 #include "utils.h"
+#include "logger.h"
 
 #include <Arduino.h>
 
@@ -96,4 +97,59 @@ int toHexChar(int value)
     {
         return 48 + value;
     }
+}
+
+int fromHex(char *src, uint8_t *dstBuf, size_t dstLen)
+{
+    int bytesWritten = 0;
+    while (bytesWritten < dstLen)
+    {
+        char msb = *src;
+        char lsb = *(src + 1);
+
+        if (msb == 0 || lsb == 0)
+        {
+            // end reached - done
+            break;
+        }
+
+        int value = fromHexChar(msb);
+        if (value < 0)
+        {
+            return -1;
+        }
+        int finalValue = value * 16;
+
+        value = fromHexChar(lsb);
+        if (value < 0)
+        {
+            return -1;
+        }
+        finalValue += value;
+
+        *dstBuf = finalValue;
+        dstBuf++;
+        src++;
+        src++;
+    }
+
+    return bytesWritten;
+}
+
+int fromHexChar(char c)
+{
+    if (c >= 'a' && c <= 'f')
+    {
+        return (c - 'a') + 10;
+    }
+    else if (c >= 'A' && c <= 'F')
+    {
+        return (c - 'A') + 10;
+    }
+    else if (c >= '0' && c <= '9')
+    {
+        return (c - '0');
+    }
+    Log.log("Could not parse hex string");
+    return -1;
 }

@@ -6,6 +6,7 @@
 #include <Wire.h>
 #include "DS3231.h"
 #include "ChipCap2.h"
+#include "utils.h"
 
 void blink(int times, int delayMS);
 void ledOff();
@@ -19,13 +20,18 @@ bool waitingForAlarm = false;
 
 void setup()
 {
-  // takes 2000ms to come here after power up, due to bootloader
+  // initialize LED digital pin as an output.
+  pinMode(LED_BUILTIN, OUTPUT);
+
+  blink(2, 250);
 
   // setup Serial
   Serial.begin(115200);
-
-  // initialize LED digital pin as an output.
-  pinMode(LED_BUILTIN, OUTPUT);
+  while (!Serial)
+  {
+    ;
+  }
+  Serial.println("OK");
 
   RN2483.setup();
 
@@ -35,14 +41,14 @@ void setup()
 
   while (!DS3231.hasTime())
   {
-    if (!DS3231.setTime(670238823))
+    if (!DS3231.setTime(670238823)) // TODO get from server
     {
       Serial.println("Could not set time");
       delay(1000);
     }
   }
 
-  Serial.println("Setup done!");
+  Log.log("Setup done!");
 }
 
 void loop()
@@ -55,19 +61,49 @@ void loop()
   Serial.println(tempAndHumidity.humidity);
 
   // measure V_battery
-  unsigned long adcBattery = analogRead(PIN_A2);
+  unsigned long adcBattery = analogRead(PIN_A3);
 
   // measure V_light sensor
-  unsigned long adcLight = analogRead(PIN_A3);
+  unsigned long adcLight = analogRead(PIN_A2);
 
   // config radio:
   handleCmd("mac pause");
   handleCmd("radio set pwr -3");
 
   // send data over radio
-  char buf[100];
-  snprintf(buf, 100, "radio tx %08lx%08lx%08lx%08lx", tempAndHumidity.humidity, tempAndHumidity.temp, adcLight, adcBattery);
-  handleCmd(buf);
+  uint8_t ping_data[2];
+  ping_data[0] = 1;
+  ping_data[1] = 2;
+
+  if (!RN2483.transmitMessage(0, 2, ping_data))
+    Log.log("Could not send ping");
+
+  uint8_t receiveBuf[255];
+  int bytesReceived = RN2483.receiveMessage(receiveBuf, sizeof(receiveBuf), 1000);
+  if (bytesReceived > 0)
+  {
+    int type = receiveBuf[2];
+    int payloadLen = toUInt(receiveBuf, 3);
+    if (type != 1)
+    {
+      Log.log("Invalid response type");
+    }
+    else
+    {
+      if (receiveBuf[7] == 1 && receiveBuf[8] == 2)
+      {
+        Log.log("Pong response valid");
+      }
+      else
+      {
+        Log.log("Pong response invalid");
+      }
+    }
+  }
+
+  //char buf[100];
+  //snprintf(buf, 100, "radio tx %08lx%08lx%08lx%08lx", tempAndHumidity.humidity, tempAndHumidity.temp, adcLight, adcBattery);
+  //handleCmd(buf);
   // wait for ack, otherwise retry after random delay
   // but give up after X seconds
 
@@ -82,34 +118,24 @@ void loop()
     Serial.println("Could not set alarm");
   }
 
+#ifdef DO_NOT_SLEEP
+  delay(10000);
+#endif
+#ifndef DO_NOT_SLEEP
   ledOn();
   while (1)
     ;
-}
-
-void loop_receiver()
-{
-  handleCmd("radio rx 2000");
-  RN2483.readResponse(buf, 100);
-  Serial.println(buf);
-}
-
-void handleCmd(const char cmd[])
-{
-  Serial.print(cmd);
-  Serial.print(": ");
-  RN2483.sendCommandRaw(cmd, buf, 100);
-  Serial.println(buf);
+#endif
 }
 
 void ledOn()
 {
-  digitalWrite(LED_BUILTIN, LOW);
+  digitalWrite(LED_BUILTIN, HIGH);
 }
 
 void ledOff()
 {
-  digitalWrite(LED_BUILTIN, HIGH);
+  digitalWrite(LED_BUILTIN, LOW);
 }
 
 void blink(int times, int delayMS)
