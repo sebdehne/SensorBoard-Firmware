@@ -111,7 +111,7 @@ int RN2483Class::readResponse(char *receiveBuf, size_t length, const unsigned lo
 
     if (bytesRead == 0)
     {
-        Serial.println("Could not read any bytes");
+        Log.log("readResponse() - nothing received");
         return -1;
     }
 
@@ -222,13 +222,15 @@ int RN2483Class::receiveMessage(uint8_t *receiveBuf, const size_t length, const 
             return -1;
         }
 
+        char buf[1000];
+        snprintf(buf, 1000, "About to listen for incoming RF... timeout: %u", timeout - duration);
+        Log.log(buf);
         bytesReceived = readResponse(buffer, sizeof(buffer), timeout - duration);
         if (bytesReceived <= 0)
         {
             continue;
         }
 
-        char buf[1000];
         snprintf(buf, 1000, "Received: %s", buffer);
         Log.log(buf);
 
@@ -254,21 +256,22 @@ int RN2483Class::receiveMessage(uint8_t *receiveBuf, const size_t length, const 
         }
 
         // decode hex string
-        int bytesReceived = fromHex(buffer + hexStartPos, receiveBuf, length);
+        bytesReceived = fromHex(buffer + hexStartPos, receiveBuf, length);
         if (bytesReceived < 0)
         {
-            char buf[1000];
             snprintf(buf, 1000, "Could parse hex string: %s", buffer + hexStartPos);
             Log.log(buf);
             continue;
         }
 
-        if (bytesReceived < 7) {
+        if (bytesReceived < 7)
+        {
             Log.log("Message too short");
             continue;
         }
 
-        if (*receiveBuf != LORA_ADDR) {
+        if (*receiveBuf != LORA_ADDR)
+        {
             Log.log("Msg not for me");
             continue;
         }

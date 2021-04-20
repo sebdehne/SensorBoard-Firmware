@@ -129,6 +129,7 @@ int fromHex(char *src, uint8_t *dstBuf, size_t dstLen)
 
         *dstBuf = finalValue;
         dstBuf++;
+        bytesWritten++;
         src++;
         src++;
     }

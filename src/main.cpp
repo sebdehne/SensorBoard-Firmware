@@ -12,7 +12,6 @@ void blink(int times, int delayMS);
 void ledOff();
 void ledOn();
 char buf[100];
-void handleCmd(const char cmd[]);
 void loop_receiver();
 void loop_sender();
 void loop_i2c();
@@ -41,6 +40,10 @@ void setup()
 
   while (!DS3231.hasTime())
   {
+
+    // need to (re-)initialize
+    
+
     if (!DS3231.setTime(670238823)) // TODO get from server
     {
       Serial.println("Could not set time");
@@ -67,8 +70,9 @@ void loop()
   unsigned long adcLight = analogRead(PIN_A2);
 
   // config radio:
-  handleCmd("mac pause");
-  handleCmd("radio set pwr -3");
+  RN2483.sendCommandRaw("mac pause", buf, sizeof(buf));
+  RN2483.sendCommandRaw("radio set pwr -3", buf, sizeof(buf));
+  RN2483.sendCommandRaw("radio set sf sf7", buf, sizeof(buf));
 
   // send data over radio
   uint8_t ping_data[2];
@@ -79,7 +83,7 @@ void loop()
     Log.log("Could not send ping");
 
   uint8_t receiveBuf[255];
-  int bytesReceived = RN2483.receiveMessage(receiveBuf, sizeof(receiveBuf), 1000);
+  int bytesReceived = RN2483.receiveMessage(receiveBuf, sizeof(receiveBuf), 2000);
   if (bytesReceived > 0)
   {
     int type = receiveBuf[2];
@@ -92,7 +96,7 @@ void loop()
     {
       if (receiveBuf[7] == 1 && receiveBuf[8] == 2)
       {
-        Log.log("Pong response valid");
+        Log.log("Pong response valid!!!!!!!!!!!!!");
       }
       else
       {
