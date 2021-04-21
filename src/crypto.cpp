@@ -1,32 +1,35 @@
 #include "crypto.h"
 #include "utils.h"
+#include "logger.h"
 
 CryptUtilClass::CryptUtilClass()
 {
     gcmaes256 = new GCM<AES256>();
 }
 
-int CryptUtilClass::encrypt(
+bool CryptUtilClass::encrypt(
     unsigned char *plaintext,
     const size_t plaintextLen,
     unsigned char *dstBuff,
-    const size_t dstBuffLen,
-    const unsigned long time)
+    const size_t dstBuffLen)
 {
 
     size_t totalLength = plaintextLen + sizeof(tag) + sizeof(iv);
     if (dstBuffLen < totalLength)
     {
-        return -1;
+        Log.log("cannot encrypt() - dstBuffLen too small");
+        return false;
     }
 
     // setup
     gcmaes256->clear();
     gcmaes256->setKey(key, gcmaes256->keySize());
 
-    // use the time as the IV/Nonce
-    memset(iv, 0, sizeof(iv)); // zero IV from previous usage
-    writeUint32(time, iv, 0);  // copy time into IV
+    // generate random IV
+    for (int i = 0; i < sizeof(iv); i++)
+    {
+        iv[i] = random(0, 255);
+    }
     gcmaes256->setIV(iv, sizeof(iv));
 
     // perform the encryption
@@ -42,27 +45,25 @@ int CryptUtilClass::encrypt(
     dstBuff += sizeof(tag);          // move the pointer to after the tag
     memcpy(dstBuff, iv, sizeof(iv)); // and append IV/Nonce
 
-    return totalLength;
+    return true;
 }
 
-bool CryptUtilClass::decrypt(
-    unsigned char ciphertextAndTagAndTime[],
-    const size_t ciphertextAndTagAndTimeLength,
-    unsigned char dstBuff[],
-    const size_t dstBuffLength,
-    const unsigned long time)
+int CryptUtilClass::decrypt(
+    unsigned char cipherTextWithIv[],
+    const size_t cipherTextWithIvLength,
+    unsigned char dstBuff[])
 {
     gcmaes256->clear();
 
-    size_t ciphertextSize = ciphertextAndTagAndTimeLength - sizeof(tag) - sizeof(iv);
+    size_t ciphertextSize = cipherTextWithIvLength - sizeof(tag) - sizeof(iv);
 
-    unsigned char *ptr = ciphertextAndTagAndTime;
+    unsigned char *ptr = cipherTextWithIv;
 
     // extract the tag
     ptr += ciphertextSize;         // move pointer to after the ciphertext / start og tag
     memcpy(tag, ptr, sizeof(tag)); // copy out tag
 
-    // extract the IV/Nonce - which contains the time
+    // extract the IV/Nonce
     ptr += sizeof(tag);          // move pointer to after the tag
     memcpy(iv, ptr, sizeof(iv)); // copy out IV
 
@@ -73,29 +74,16 @@ bool CryptUtilClass::decrypt(
     gcmaes256->setIV(iv, sizeof(iv));
 
     // decrypt the data (doesn't validate the tag)
-    gcmaes256->decrypt(dstBuff, ciphertextAndTagAndTime, ciphertextSize);
+    gcmaes256->decrypt(dstBuff, cipherTextWithIv, ciphertextSize);
 
     // check the tag
     if (!gcmaes256->checkTag(tag, sizeof(tag)))
     {
         Serial.println("Tag-validation failed");
-        return false;
+        return -1;
     }
 
-    // good so far, extract the time from the IV/Nonce
-    unsigned long receivedTime = toUInt(iv, 0);
-
-    // compare with local time
-    long delta = time - receivedTime;
-
-    // allow 30 second clock-slew
-    if (delta > 15 || delta < -15)
-    {
-        Serial.println("Time-validation failed");
-        return false;
-    }
-
-    return true;
+    return ciphertextSize;
 }
 
 CryptUtilClass CryptUtil;

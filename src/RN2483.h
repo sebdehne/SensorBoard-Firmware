@@ -2,22 +2,27 @@
 #define _RN2483_H
 
 #include <Arduino.h>
+#include "crypto.h"
 
 class RN2483Class
 {
 private:
-    
+    bool transmitDataRaw(uint8_t *cipherTextWithIv, size_t length);
+    int receiveDataRaw(uint8_t *receiveBuf, size_t receiveBufLength, const unsigned long timeout);
 
 public:
     RN2483Class();
+
+    int maxEncryptedDataSize = 255;
+    int maxDataSize = maxEncryptedDataSize - CryptUtil.encryptionOverhead;
 
     void setup();
     int readResponse(char *receiveBuf, size_t length, const unsigned long timeout);
     int sendCommandRaw(const char cmd[], char *receiveBuf, size_t length);
     bool consumeAndLog();
 
-    bool transmitMessage(uint8_t type, ssize_t length, uint8_t payload[]);
-    int receiveMessage(uint8_t *receiveBuf, const size_t length, const unsigned long timeout);
+    bool transmitData(uint8_t *plainText, size_t plainTextLen);
+    int receiveData(uint8_t *receiveBuf, const size_t receiveBufLength, const unsigned long timeout);
 
 };
 

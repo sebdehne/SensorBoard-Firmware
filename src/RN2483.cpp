@@ -1,6 +1,5 @@
 #include "RN2483.h"
 #include "logger.h"
-#include <Arduino.h>
 #include "utils.h"
 
 RN2483Class::RN2483Class() {}
@@ -74,15 +73,15 @@ int RN2483Class::sendCommandRaw(const char cmd[], char *receiveBuf, size_t lengt
 
     int bytesReceived = readResponse(receiveBuf, length, 1000);
 
-    char logBuf[100];
+    char logBuf[1024];
     if (bytesReceived > 0)
     {
-        snprintf(logBuf, 100, "LoRa cmd: %s -> %u: %s", cmd, bytesReceived, receiveBuf);
+        snprintf(logBuf, sizeof(logBuf), "LoRa cmd: %s -> %u: %s", cmd, bytesReceived, receiveBuf);
         Log.log(logBuf);
     }
     else
     {
-        snprintf(logBuf, 100, "LoRa cmd: %s -> %u", cmd, bytesReceived);
+        snprintf(logBuf, sizeof(logBuf), "LoRa cmd: %s -> %u", cmd, bytesReceived);
         Log.log(logBuf);
     }
 
@@ -138,21 +137,33 @@ int RN2483Class::readResponse(char *receiveBuf, size_t length, const unsigned lo
     return pos;
 }
 
-bool RN2483Class::transmitMessage(uint8_t type, ssize_t length, uint8_t payload[])
+bool RN2483Class::transmitData(uint8_t *plainText, size_t plainTextLen)
 {
-    uint8_t data[255];
 
-    data[0] = 1;         // to addr
-    data[1] = LORA_ADDR; // from addr
-    data[2] = type;
-    writeUint32(length, data, 3);
-    for (ssize_t i = 0; i < length; i++)
+    if (plainTextLen > maxEncryptedDataSize)
     {
-        data[i + 7] = payload[i];
+        Log.log("Payload length too large");
+        return false;
     }
 
-    char hexString[255 * 2 + 1]; // max 255 bytes (1 bytes takes 2 chars + 1 for \0)
-    toHex(data, length + 7, hexString);
+    uint8_t data[plainTextLen + CryptUtil.encryptionOverhead];
+    if (!CryptUtil.encrypt(
+            plainText,
+            plainTextLen,
+            data,
+            plainTextLen + CryptUtil.encryptionOverhead))
+    {
+        return false;
+    }
+
+    return transmitDataRaw(data, plainTextLen + CryptUtil.encryptionOverhead);
+}
+
+bool RN2483Class::transmitDataRaw(uint8_t *cipherTextWithIv, size_t length)
+{
+
+    char hexString[maxEncryptedDataSize * 2 + 1]; // max 255 bytes (1 bytes takes 2 chars + 1 for \0)
+    toHex(cipherTextWithIv, length, hexString);
 
     char cmdString[sizeof(hexString) + 10];
     snprintf(cmdString, sizeof(cmdString), "radio tx %s", hexString);
@@ -198,10 +209,45 @@ bool RN2483Class::transmitMessage(uint8_t type, ssize_t length, uint8_t payload[
     return true;
 }
 
-int RN2483Class::receiveMessage(uint8_t *receiveBuf, const size_t length, const unsigned long timeout)
+int RN2483Class::receiveData(uint8_t *receiveBuf, const size_t receiveBufLength, const unsigned long timeout)
+{
+    if (receiveBufLength < maxDataSize)
+    {
+        Log.log("receiveData() - receiveBufLength too small");
+        return -1;
+    }
+
+    uint8_t bufferEncrypted[maxEncryptedDataSize];
+    int bytesReceived = receiveDataRaw(bufferEncrypted, maxEncryptedDataSize, timeout);
+    if (bytesReceived < CryptUtil.encryptionOverhead)
+    {
+        Log.log("receiveData() - too few (or none) bytes received");
+        return -1;
+    }
+
+    int plainTextSize = CryptUtil.decrypt(
+        bufferEncrypted,
+        bytesReceived,
+        receiveBuf);
+
+    if (plainTextSize < 0)
+    {
+        Log.log("Could not decrypt");
+        return -1;
+    }
+
+    return plainTextSize;
+}
+
+int RN2483Class::receiveDataRaw(uint8_t *receiveBuf, const size_t receiveBufLength, const unsigned long timeout)
 {
     const unsigned long startTime = millis();
-    char buffer[(255 * 2) + 10 + 1];
+    char buffer[(maxEncryptedDataSize * 2) + 20 + 1];
+    if (receiveBufLength < maxEncryptedDataSize)
+    {
+        Log.log("receiveDataRaw() - receiveBufLength too small");
+        return -1;
+    }
 
     int hexStartPos = -1;
     while (millis() - startTime < timeout)
@@ -256,23 +302,11 @@ int RN2483Class::receiveMessage(uint8_t *receiveBuf, const size_t length, const 
         }
 
         // decode hex string
-        bytesReceived = fromHex(buffer + hexStartPos, receiveBuf, length);
+        bytesReceived = fromHex(buffer + hexStartPos, receiveBuf, receiveBufLength);
         if (bytesReceived < 0)
         {
             snprintf(buf, 1000, "Could parse hex string: %s", buffer + hexStartPos);
             Log.log(buf);
-            continue;
-        }
-
-        if (bytesReceived < 7)
-        {
-            Log.log("Message too short");
-            continue;
-        }
-
-        if (*receiveBuf != LORA_ADDR)
-        {
-            Log.log("Msg not for me");
             continue;
         }
 

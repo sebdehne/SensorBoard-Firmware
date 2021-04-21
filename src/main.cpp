@@ -7,6 +7,7 @@
 #include "DS3231.h"
 #include "ChipCap2.h"
 #include "utils.h"
+#include "SmartHomeServerClient.h"
 
 void blink(int times, int delayMS);
 void ledOff();
@@ -22,7 +23,10 @@ void setup()
   // initialize LED digital pin as an output.
   pinMode(LED_BUILTIN, OUTPUT);
 
-  blink(2, 250);
+  analogReadResolution(12);
+
+  // init random seed
+  randomSeed(analogRead(PIN_A0));
 
   // setup Serial
   Serial.begin(115200);
@@ -33,20 +37,39 @@ void setup()
   Serial.println("OK");
 
   RN2483.setup();
-
-  analogReadResolution(12);
+  // config radio:
+  RN2483.sendCommandRaw("mac pause", buf, sizeof(buf));
+  RN2483.sendCommandRaw("radio set pwr -3", buf, sizeof(buf));
+  RN2483.sendCommandRaw("radio set sf sf7", buf, sizeof(buf));
 
   Wire.begin(); // used by DS3231 & ChipCap2
 
   while (!DS3231.hasTime())
   {
-
+    Log.log("Sending ping to request time from server");
     // need to (re-)initialize
-    
-
-    if (!DS3231.setTime(670238823)) // TODO get from server
+    if (SmartHomeServerClient.ping())
     {
-      Serial.println("Could not set time");
+      InboundPacketHeader inboundPacketHeader = SmartHomeServerClient.receivePong();
+      if (!inboundPacketHeader.receiveError)
+      {
+        char buf[100];
+        snprintf(buf, 100, "Got time: %lu", inboundPacketHeader.timestamp);
+        Log.log(buf);
+        if (!DS3231.setTime(inboundPacketHeader.timestamp))
+        {
+          Serial.println("Could not set time");
+          delay(1000);
+        }
+        else
+        {
+          blink(4, 250); // initial setup done
+        }
+      }
+    }
+    else
+    {
+      Serial.println("Could not send ping");
       delay(1000);
     }
   }
@@ -69,54 +92,36 @@ void loop()
   // measure V_light sensor
   unsigned long adcLight = analogRead(PIN_A2);
 
-  // config radio:
-  RN2483.sendCommandRaw("mac pause", buf, sizeof(buf));
-  RN2483.sendCommandRaw("radio set pwr -3", buf, sizeof(buf));
-  RN2483.sendCommandRaw("radio set sf sf7", buf, sizeof(buf));
-
-  // send data over radio
-  uint8_t ping_data[2];
-  ping_data[0] = 1;
-  ping_data[1] = 2;
-
-  if (!RN2483.transmitMessage(0, 2, ping_data))
-    Log.log("Could not send ping");
-
-  uint8_t receiveBuf[255];
-  int bytesReceived = RN2483.receiveMessage(receiveBuf, sizeof(receiveBuf), 2000);
-  if (bytesReceived > 0)
+  // communicate with server
+  for (int i = 0; i < 5; i++)
   {
-    int type = receiveBuf[2];
-    int payloadLen = toUInt(receiveBuf, 3);
-    if (type != 1)
+    bool sent = SmartHomeServerClient.sendSensorData(
+        tempAndHumidity.temp,
+        tempAndHumidity.humidity,
+        adcBattery,
+        adcLight,
+        FIRMWARE_VERSION);
+    if (sent)
     {
-      Log.log("Invalid response type");
-    }
-    else
-    {
-      if (receiveBuf[7] == 1 && receiveBuf[8] == 2)
+      SensorDataResponse sensorDataResponse = SmartHomeServerClient.receiveSensorDataResponse();
+      if (!sensorDataResponse.receiveError)
       {
-        Log.log("Pong response valid!!!!!!!!!!!!!");
-      }
-      else
-      {
-        Log.log("Pong response invalid");
+        if (sensorDataResponse.timeAdjustmentRequired)
+        {
+          Log.log("Adjusting time now");
+          DS3231.setTime(sensorDataResponse.timestamp);
+        }
+
+        // TODO handle firmware update
+
+        break;
       }
     }
+
+    delay(random(0, 500));
   }
 
-  //char buf[100];
-  //snprintf(buf, 100, "radio tx %08lx%08lx%08lx%08lx", tempAndHumidity.humidity, tempAndHumidity.temp, adcLight, adcBattery);
-  //handleCmd(buf);
-  // wait for ack, otherwise retry after random delay
-  // but give up after X seconds
-
-  // if timestamp in ack is too different, adjust clock
-
-  // 2) blink LED
-  blink(2, 500);
-
-  // 3) set alarm (=> cuts the power)
+  // 2) set alarm (=> cuts the power)
   if (!DS3231.setAlarm1(20))
   {
     Serial.println("Could not set alarm");

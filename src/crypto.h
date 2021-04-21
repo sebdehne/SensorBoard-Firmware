@@ -21,19 +21,18 @@ private:
 public:
     CryptUtilClass();
 
-    int encrypt(
+    int encryptionOverhead = 16 + 12;
+
+    bool encrypt(
         unsigned char plaintext[],
         const size_t plaintextLen,
         unsigned char *dstBuff,
-        const size_t dstBuffLen,
-        const unsigned long time);
+        const size_t dstBuffLen);
 
-    bool decrypt(
+    int decrypt(
         unsigned char ciphertextAndTagAndTime[],
         const size_t ciphertextAndTagAndTimeLength,
-        unsigned char dstBuff[],
-        const size_t dstBuffLength,
-        const unsigned long time);
+        unsigned char dstBuff[]);
 };
 
 extern CryptUtilClass CryptUtil;
