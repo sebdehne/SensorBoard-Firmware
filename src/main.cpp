@@ -17,6 +17,7 @@ void loop_receiver();
 void loop_sender();
 void loop_i2c();
 bool waitingForAlarm = false;
+unsigned long sleepTimeInSeconds = 300;
 
 void setup()
 {
@@ -100,12 +101,17 @@ void loop()
         tempAndHumidity.humidity,
         adcBattery,
         adcLight,
+        sleepTimeInSeconds,
         FIRMWARE_VERSION);
     if (sent)
     {
       SensorDataResponse sensorDataResponse = SmartHomeServerClient.receiveSensorDataResponse();
       if (!sensorDataResponse.receiveError)
       {
+        if (sensorDataResponse.sleepTimeInSeconds > 0) {
+          Log.log("Adjusting sleepTimeInSeconds now");
+          sleepTimeInSeconds = sensorDataResponse.sleepTimeInSeconds;
+        }
         if (sensorDataResponse.timeAdjustmentRequired)
         {
           Log.log("Adjusting time now");
@@ -122,7 +128,7 @@ void loop()
   }
 
   // 2) set alarm (=> cuts the power)
-  if (!DS3231.setAlarm1(20))
+  if (!DS3231.setAlarm1(sleepTimeInSeconds))
   {
     Serial.println("Could not set alarm");
   }

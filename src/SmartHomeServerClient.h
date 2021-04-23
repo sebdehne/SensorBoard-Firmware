@@ -16,6 +16,7 @@ struct SensorDataResponse
     bool receiveError;
     bool firmwareUpdateRequired;
     bool timeAdjustmentRequired;
+    unsigned long sleepTimeInSeconds;
     unsigned long timestamp;
 };
 
@@ -39,6 +40,7 @@ public:
         unsigned long humidity, 
         unsigned long adcBattery,
         unsigned long adcLight,
+        unsigned long sleepTimeInSeconds,
         uint8_t firmwareVersion);
 
     SensorDataResponse receiveSensorDataResponse();

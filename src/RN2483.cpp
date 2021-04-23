@@ -249,7 +249,6 @@ int RN2483Class::receiveDataRaw(uint8_t *receiveBuf, const size_t receiveBufLeng
         return -1;
     }
 
-    int hexStartPos = -1;
     while (millis() - startTime < timeout)
     {
         int bytesReceived = sendCommandRaw("radio rx 0", buffer, sizeof(buffer));
@@ -262,14 +261,14 @@ int RN2483Class::receiveDataRaw(uint8_t *receiveBuf, const size_t receiveBufLeng
             continue;
         }
 
-        int duration = millis() - startTime;
+        unsigned long duration = millis() - startTime;
         if (duration > timeout)
         {
             return -1;
         }
 
         char buf[1000];
-        snprintf(buf, 1000, "About to listen for incoming RF... timeout: %u", timeout - duration);
+        snprintf(buf, sizeof(buf), "About to listen for incoming RF... timeout: %lu", timeout - duration);
         Log.log(buf);
         bytesReceived = readResponse(buffer, sizeof(buffer), timeout - duration);
         if (bytesReceived <= 0)
@@ -277,35 +276,22 @@ int RN2483Class::receiveDataRaw(uint8_t *receiveBuf, const size_t receiveBufLeng
             continue;
         }
 
-        snprintf(buf, 1000, "Received: %s", buffer);
+        snprintf(buf, sizeof(buf), "Received: %s", buffer);
         Log.log(buf);
 
         if (strncmp(buffer, "radio_rx ", 9) != 0)
             continue;
 
-        // find the start pos of the hex string
-        int pos = -1;
-        while (++pos < sizeof(buffer))
-        {
-            char c = buffer[pos];
-            if (c >= '0' && c <= '9')
-            {
-                hexStartPos = pos;
-                break;
-            }
-        }
-
-        if (hexStartPos < 0)
-        {
-            Log.log("Could not find start pos");
-            continue;
-        }
+        // find the start pos of the hex string after 'radio_rx '
+        int hexStartPos = 7;
+        while (buffer[++hexStartPos] == ' ')
+            ;
 
         // decode hex string
         bytesReceived = fromHex(buffer + hexStartPos, receiveBuf, receiveBufLength);
         if (bytesReceived < 0)
         {
-            snprintf(buf, 1000, "Could parse hex string: %s", buffer + hexStartPos);
+            snprintf(buf, sizeof(buf), "Could parse hex string: %s", buffer + hexStartPos);
             Log.log(buf);
             continue;
         }

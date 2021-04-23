@@ -38,25 +38,27 @@ InboundPacketHeader SmartHomeServerClientClass::receivePong()
 }
 
 bool SmartHomeServerClientClass::sendSensorData(
-        unsigned long temp, 
-        unsigned long humidity, 
-        unsigned long adcBattery,
-        unsigned long adcLight,
-        uint8_t firmwareVersion)
+    unsigned long temp,
+    unsigned long humidity,
+    unsigned long adcBattery,
+    unsigned long adcLight,
+    unsigned long sleepTimeInSeconds,
+    uint8_t firmwareVersion)
 {
-    uint8_t payload[17];
+    uint8_t payload[5 * 4 + 1];
     writeUint32(temp, payload, 0);
     writeUint32(humidity, payload, 4);
     writeUint32(adcBattery, payload, 8);
     writeUint32(adcLight, payload, 12);
-    payload[16] = firmwareVersion;
+    writeUint32(sleepTimeInSeconds, payload, 16);
+    payload[20] = firmwareVersion;
 
     return sendMessage(2, payload, sizeof(payload));
 }
 
 SensorDataResponse SmartHomeServerClientClass::receiveSensorDataResponse()
 {
-    uint8_t payload[2];
+    uint8_t payload[6];
     SensorDataResponse sensorDataResponse;
     sensorDataResponse.receiveError = true;
 
@@ -72,7 +74,8 @@ SensorDataResponse SmartHomeServerClientClass::receiveSensorDataResponse()
         return sensorDataResponse;
     }
 
-    if (inboundPacketHeader.type != 3) {
+    if (inboundPacketHeader.type != 3)
+    {
         Log.log("Invalid response type received");
         return sensorDataResponse;
     }
@@ -80,7 +83,17 @@ SensorDataResponse SmartHomeServerClientClass::receiveSensorDataResponse()
     sensorDataResponse.receiveError = false;
     sensorDataResponse.firmwareUpdateRequired = payload[0];
     sensorDataResponse.timeAdjustmentRequired = payload[1];
+    sensorDataResponse.sleepTimeInSeconds = toUInt(payload, 2);
     sensorDataResponse.timestamp = inboundPacketHeader.timestamp;
+    char buf[100];
+    snprintf(
+        buf,
+        sizeof(buf),
+        "SensorDataResponse received. updateFirmware=%d adjustTime=%d sleepTimeInSeconds=%lu",
+        sensorDataResponse.firmwareUpdateRequired,
+        sensorDataResponse.timeAdjustmentRequired,
+        sensorDataResponse.sleepTimeInSeconds);
+    Log.log(buf);
 
     return sensorDataResponse;
 }

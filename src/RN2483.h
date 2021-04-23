@@ -13,8 +13,8 @@ private:
 public:
     RN2483Class();
 
-    int maxEncryptedDataSize = 255;
-    int maxDataSize = maxEncryptedDataSize - CryptUtil.encryptionOverhead;
+    size_t maxEncryptedDataSize = 255;
+    size_t maxDataSize = maxEncryptedDataSize - CryptUtil.encryptionOverhead;
 
     void setup();
     int readResponse(char *receiveBuf, size_t length, const unsigned long timeout);
