@@ -2,6 +2,8 @@
 #define _SMARTHOME_CLIENT_H
 
 #include "RN2483.h"
+#include <CRC32.h>
+
 
 struct InboundPacketHeader
 {
@@ -20,12 +22,24 @@ struct SensorDataResponse
     unsigned long timestamp;
 };
 
+struct FirmwareInfoResponse
+{
+    bool receiveError;
+    unsigned long totalLength;
+    unsigned long crc32;
+};
+
+
 class SmartHomeServerClientClass
 {
 private:
+
     bool sendMessage(uint8_t type, unsigned char *payload, size_t payloadLength);
     InboundPacketHeader receiveMessage(uint8_t *payloadBuffer, size_t payloadBufferLength, const unsigned long timeout);
     bool hasValidTimestamp(InboundPacketHeader inboundPacketHeader);
+
+    CRC32 crc32;
+    FirmwareInfoResponse getFirmwareInfo();
 
 public:
     SmartHomeServerClientClass();
@@ -42,8 +56,9 @@ public:
         unsigned long adcLight,
         unsigned long sleepTimeInSeconds,
         uint8_t firmwareVersion);
-
     SensorDataResponse receiveSensorDataResponse();
+
+    void upgradeFirmware();
 
 };
 

@@ -26,7 +26,7 @@ bool CryptUtilClass::encrypt(
     gcmaes256->setKey(key, gcmaes256->keySize());
 
     // generate random IV
-    for (int i = 0; i < sizeof(iv); i++)
+    for (unsigned int i = 0; i < sizeof(iv); i++)
     {
         iv[i] = random(0, 255);
     }

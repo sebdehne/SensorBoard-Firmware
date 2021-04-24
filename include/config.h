@@ -1,9 +1,9 @@
-#define DEBUG
-//#define RECEIVER
-//#define SENDER
 #define I2C
 #define LORA_ADDR 2
-#define FIRMWARE_VERSION 1
+#define FIRMWARE_VERSION 5
 
-// note: when not sleeping power remains on and the ChipCap2 does not make new measurements
-#define DO_NOT_SLEEP
+// note: when using DEBUG - power is not removed and the ChipCap2 does not make new measurements
+//#define DEBUG
+
+#define LORA_RETRY_DELAY random(0, 500)
+#define LORA_RETRY_COUNT 5

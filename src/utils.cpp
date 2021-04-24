@@ -91,7 +91,7 @@ int toHexChar(int value)
 {
     if (value > 9)
     {
-        return 97 + (value - 10);
+        return 65 + (value - 10);
     }
     else
     {
@@ -101,7 +101,7 @@ int toHexChar(int value)
 
 int fromHex(char *src, uint8_t *dstBuf, size_t dstLen)
 {
-    int bytesWritten = 0;
+    unsigned int bytesWritten = 0;
     while (bytesWritten < dstLen)
     {
         char msb = *src;

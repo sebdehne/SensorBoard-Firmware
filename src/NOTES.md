@@ -1,4 +1,6 @@
 
+Factory settings of the RN2483 LoRa module:
+
 RN2483 1.0.5 Oct 31 2018 15:06:52
 
 radio get afcbw: 41.7

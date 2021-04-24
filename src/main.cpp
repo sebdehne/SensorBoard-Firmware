@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <ArduinoOTA.h> // must be here or otherwise upgrading overrides current firmware
 
 #include "config.h"
 #include "RN2483.h"
@@ -13,11 +14,8 @@ void blink(int times, int delayMS);
 void ledOff();
 void ledOn();
 char buf[100];
-void loop_receiver();
-void loop_sender();
-void loop_i2c();
-bool waitingForAlarm = false;
-unsigned long sleepTimeInSeconds = 300;
+unsigned long sleepTimeInSeconds = 20;
+bool initialSetup = false;
 
 void setup()
 {
@@ -29,6 +27,7 @@ void setup()
   // init random seed
   randomSeed(analogRead(PIN_A0));
 
+#ifdef DEBUG
   // setup Serial
   Serial.begin(115200);
   while (!Serial)
@@ -36,6 +35,7 @@ void setup()
     ;
   }
   Serial.println("OK");
+#endif
 
   RN2483.setup();
   // config radio:
@@ -47,6 +47,7 @@ void setup()
 
   while (!DS3231.hasTime())
   {
+    initialSetup = true;
     Log.log("Sending ping to request time from server");
     // need to (re-)initialize
     if (SmartHomeServerClient.ping())
@@ -82,10 +83,6 @@ void loop()
 {
   // 0) measure temp
   TempAndHumidity tempAndHumidity = ChipCap2.read();
-  Serial.print("Temp: ");
-  Serial.println(tempAndHumidity.temp);
-  Serial.print("Humidity: ");
-  Serial.println(tempAndHumidity.humidity);
 
   // measure V_battery
   unsigned long adcBattery = analogRead(PIN_A3);
@@ -94,7 +91,7 @@ void loop()
   unsigned long adcLight = analogRead(PIN_A2);
 
   // communicate with server
-  for (int i = 0; i < 5; i++)
+  for (int i = 0; i < LORA_RETRY_COUNT; i++)
   {
     bool sent = SmartHomeServerClient.sendSensorData(
         tempAndHumidity.temp,
@@ -108,7 +105,8 @@ void loop()
       SensorDataResponse sensorDataResponse = SmartHomeServerClient.receiveSensorDataResponse();
       if (!sensorDataResponse.receiveError)
       {
-        if (sensorDataResponse.sleepTimeInSeconds > 0) {
+        if (sensorDataResponse.sleepTimeInSeconds > 0)
+        {
           Log.log("Adjusting sleepTimeInSeconds now");
           sleepTimeInSeconds = sensorDataResponse.sleepTimeInSeconds;
         }
@@ -117,14 +115,16 @@ void loop()
           Log.log("Adjusting time now");
           DS3231.setTime(sensorDataResponse.timestamp);
         }
-
-        // TODO handle firmware update
+        if (sensorDataResponse.firmwareUpdateRequired)
+        {
+          SmartHomeServerClient.upgradeFirmware();
+        }
 
         break;
       }
     }
 
-    delay(random(0, 500));
+    delay(LORA_RETRY_DELAY);
   }
 
   // 2) set alarm (=> cuts the power)
@@ -133,11 +133,14 @@ void loop()
     Serial.println("Could not set alarm");
   }
 
-#ifdef DO_NOT_SLEEP
-  delay(10000);
+#ifdef DEBUG
+  delay(sleepTimeInSeconds * 1000);
 #endif
-#ifndef DO_NOT_SLEEP
-  ledOn();
+#ifndef DEBUG
+  if (initialSetup)
+  {
+    ledOn();
+  }
   while (1)
     ;
 #endif
