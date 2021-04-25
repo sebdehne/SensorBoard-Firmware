@@ -127,7 +127,7 @@ int RN2483Class::readResponse(char *receiveBuf, size_t length, const unsigned lo
 
     if (pos == -1)
     {
-        Serial.println("Could not find LF");
+        Log.log("Could not find LF");
         return -1;
     }
 

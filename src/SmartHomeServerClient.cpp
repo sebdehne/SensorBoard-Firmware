@@ -2,22 +2,26 @@
 #include "logger.h"
 #include "DS3231.h"
 #include "utils.h"
-#include <ArduinoOTA.h>
 
 SmartHomeServerClientClass::SmartHomeServerClientClass() {}
+
+void SmartHomeServerClientClass::setLoraAddr(uint8_t addr){
+    loraAddr = addr;
+}
 
 bool SmartHomeServerClientClass::ping()
 {
 
-    uint8_t ping_data[1];
+    uint8_t ping_data[1 + 16];
     ping_data[0] = FIRMWARE_VERSION;
+    writeSerial16Bytes(ping_data, 1);
 
     return sendMessage(0, ping_data, sizeof(ping_data));
 }
 
 InboundPacketHeader SmartHomeServerClientClass::receivePong()
 {
-    uint8_t ping_data[1];
+    uint8_t ping_data[1 + 16];
     InboundPacketHeader inboundPacketHeader = receiveMessage(
         ping_data,
         sizeof(ping_data),
@@ -30,6 +34,7 @@ InboundPacketHeader SmartHomeServerClientClass::receivePong()
     if (inboundPacketHeader.type == 1 && ping_data[0] == FIRMWARE_VERSION)
     {
         Log.log("Pong response valid!!!!!!!!!!!!!");
+        loraAddr = inboundPacketHeader.to;
     }
     else
     {
@@ -124,12 +129,13 @@ InboundPacketHeader SmartHomeServerClientClass::receiveMessage(
             Log.log("Ignoring too few bytes (or none)");
             continue;
         }
-        if (receiveBuffer[0] != LORA_ADDR)
+        if (loraAddr != 0 && receiveBuffer[0] != loraAddr)
         {
             Log.log("Ignoring message not for me");
             continue;
         }
         inboundPacketHeader.type = receiveBuffer[2];
+        inboundPacketHeader.to = receiveBuffer[0];
         inboundPacketHeader.timestamp = toUInt(receiveBuffer, 3);
         inboundPacketHeader.payloadLength = toUInt(receiveBuffer, 7);
         if (inboundPacketHeader.payloadLength > payloadBufferLength)
@@ -174,7 +180,7 @@ bool SmartHomeServerClientClass::sendMessage(uint8_t type, unsigned char *payloa
     DateTime time = DS3231.readTime();
 
     data[0] = 1;         // to addr
-    data[1] = LORA_ADDR; // from addr
+    data[1] = loraAddr;  // from addr
     data[2] = type;
     writeUint32(time.secondsSince2000, data, 3);
     writeUint32(payloadLength, data, 7);
@@ -200,7 +206,7 @@ void SmartHomeServerClientClass::upgradeFirmware()
     }
     Log.log("Got firmwareInfoResponse, getting the data now...");
 
-    delay(500); // going too fast after firmwareInfoResponse doesn't work
+    delay(500);                                                                                      // going too fast after firmwareInfoResponse doesn't work
     const uint8_t maxFirmwareBytesPerResponse = 255 - headerSize - CryptUtil.encryptionOverhead - 1; //  215
     const int packetsPerAck = 5;
     const unsigned long receiveBytesWithoutAck = maxFirmwareBytesPerResponse * packetsPerAck;
@@ -283,7 +289,7 @@ void SmartHomeServerClientClass::upgradeFirmware()
 
         if (bytesWrittenToFlash == 0)
         {
-            InternalStorage.open(firmwareInfoResponse.totalLength);
+            FlashUtils.prepareWritingFirmware();
         }
 
         // ok all good, accept the bytes
@@ -292,7 +298,7 @@ void SmartHomeServerClientClass::upgradeFirmware()
         Log.log(logBuf);
         for (unsigned long j = 0; j < firmwareBytesReceived; j++)
         {
-            InternalStorage.write(receiveBuffer[j + 1]);
+            FlashUtils.write(receiveBuffer[j + 1]);
             bytesWrittenToFlash++;
             awaitingIncomingBytes--;
         }
@@ -301,39 +307,20 @@ void SmartHomeServerClientClass::upgradeFirmware()
 
         if (bytesWrittenToFlash == firmwareInfoResponse.totalLength)
         {
-            InternalStorage.close();
+            FlashUtils.finishWriting();
             break;
         }
     }
 
-    // check crc32
-    crc32.reset();
-    byte *addr = (byte *)InternalStorage.STORAGE_START_ADDRESS;
-    for (unsigned long i = 0; i < firmwareInfoResponse.totalLength; i++)
-    {
-        crc32.update(*addr);
-        addr++;
-    }
-    unsigned long firmwareChecksum = crc32.finalize();
-
-    if (firmwareChecksum != firmwareInfoResponse.crc32)
-    {
-        snprintf(
-            logBuf,
-            sizeof(logBuf),
-            "CRC32-error: firmwareSize=%lu receivedCRC32=%lu firmwareChecksum=%lu",
-            firmwareInfoResponse.totalLength,
-            firmwareInfoResponse.crc32,
-            firmwareChecksum);
-        Log.log(logBuf);
-    }
-    else
-    {
-        Log.log("Rebooting to new firmware now");
-        Serial.flush();
-        delay(1000);
-        InternalStorage.apply();
-    }
+    unsigned long calculatedCrc32 = FlashUtils.applyFirmwareAndReset(firmwareInfoResponse.totalLength, firmwareInfoResponse.crc32);
+    snprintf(
+        logBuf,
+        sizeof(logBuf),
+        "CRC32-error: firmwareSize=%lu receivedCRC32=%lu firmwareChecksum=%lu",
+        firmwareInfoResponse.totalLength,
+        firmwareInfoResponse.crc32,
+        calculatedCrc32);
+    Log.log(logBuf);
 }
 
 FirmwareInfoResponse SmartHomeServerClientClass::getFirmwareInfo()
@@ -376,6 +363,5 @@ FirmwareInfoResponse SmartHomeServerClientClass::getFirmwareInfo()
     }
     return firmwareInfoResponse;
 }
-
 
 SmartHomeServerClientClass SmartHomeServerClient;

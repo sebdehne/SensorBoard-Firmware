@@ -1,6 +1,8 @@
-#define I2C
-#define LORA_ADDR 2
-#define FIRMWARE_VERSION 5
+#define FIRMWARE_VERSION 2
+
+// reserve flash (in bytes) for firmware and userspace
+#define FIRMWARE_SIZE 40000 // should be large enough to hold the firmware
+#define USERDATA_SIZE 1
 
 // note: when using DEBUG - power is not removed and the ChipCap2 does not make new measurements
 //#define DEBUG

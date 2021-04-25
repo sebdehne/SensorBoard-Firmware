@@ -1,5 +1,4 @@
 #include <Arduino.h>
-#include <ArduinoOTA.h> // must be here or otherwise upgrading overrides current firmware
 
 #include "config.h"
 #include "RN2483.h"
@@ -9,6 +8,7 @@
 #include "ChipCap2.h"
 #include "utils.h"
 #include "SmartHomeServerClient.h"
+#include "flash.h"
 
 void blink(int times, int delayMS);
 void ledOff();
@@ -37,6 +37,8 @@ void setup()
   Serial.println("OK");
 #endif
 
+  FlashUtils.init();
+
   RN2483.setup();
   // config radio:
   RN2483.sendCommandRaw("mac pause", buf, sizeof(buf));
@@ -45,7 +47,7 @@ void setup()
 
   Wire.begin(); // used by DS3231 & ChipCap2
 
-  while (!DS3231.hasTime())
+  while (!DS3231.hasTime() || FlashUtils.readUserdata(0) == 255)
   {
     initialSetup = true;
     Log.log("Sending ping to request time from server");
@@ -55,12 +57,16 @@ void setup()
       InboundPacketHeader inboundPacketHeader = SmartHomeServerClient.receivePong();
       if (!inboundPacketHeader.receiveError)
       {
+        FlashUtils.prepareWritingUserdata();
+        FlashUtils.write(inboundPacketHeader.to);
+        FlashUtils.finishWriting();
+
         char buf[100];
         snprintf(buf, 100, "Got time: %lu", inboundPacketHeader.timestamp);
         Log.log(buf);
         if (!DS3231.setTime(inboundPacketHeader.timestamp))
         {
-          Serial.println("Could not set time");
+          Log.log("Could not set time");
           delay(1000);
         }
         else
@@ -71,10 +77,13 @@ void setup()
     }
     else
     {
-      Serial.println("Could not send ping");
+      Log.log("Could not send ping");
       delay(1000);
     }
   }
+
+  // set LoRa addr
+  SmartHomeServerClient.setLoraAddr(FlashUtils.readUserdata(0));
 
   Log.log("Setup done!");
 }
@@ -130,7 +139,7 @@ void loop()
   // 2) set alarm (=> cuts the power)
   if (!DS3231.setAlarm1(sleepTimeInSeconds))
   {
-    Serial.println("Could not set alarm");
+    Log.log("Could not set alarm");
   }
 
 #ifdef DEBUG

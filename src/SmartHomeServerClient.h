@@ -2,13 +2,14 @@
 #define _SMARTHOME_CLIENT_H
 
 #include "RN2483.h"
-#include <CRC32.h>
+#include "flash.h"
 
 
 struct InboundPacketHeader
 {
     bool receiveError;
     uint8_t type;
+    uint8_t to;
     unsigned long timestamp;
     unsigned long payloadLength;
 };
@@ -33,12 +34,12 @@ struct FirmwareInfoResponse
 class SmartHomeServerClientClass
 {
 private:
+    uint8_t loraAddr = 0;
 
     bool sendMessage(uint8_t type, unsigned char *payload, size_t payloadLength);
     InboundPacketHeader receiveMessage(uint8_t *payloadBuffer, size_t payloadBufferLength, const unsigned long timeout);
     bool hasValidTimestamp(InboundPacketHeader inboundPacketHeader);
 
-    CRC32 crc32;
     FirmwareInfoResponse getFirmwareInfo();
 
 public:
@@ -48,6 +49,7 @@ public:
 
     bool ping();
     InboundPacketHeader receivePong();
+    void setLoraAddr(uint8_t addr);
 
     bool sendSensorData(
         unsigned long temp, 

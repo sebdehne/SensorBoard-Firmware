@@ -10,6 +10,5 @@ Features:
 - Ultra low power sleep (~0.9µA) by using external RTC [DS3231SN#](https://no.mouser.com/ProductDetail/Maxim-Integrated/DS3231SN?qs=1eQvB6Dk1vhUlr8%2FOrV0Fw%3D%3D) to disable power
 
 Dependencies:
-- [ArduinoOTA](https://github.com/jandrassy/ArduinoOTA) - for writing the firmware to flash
 - [CRC32](https://github.com/bakercp/CRC32)
 - [rweather/Crypto](https://github.com/rweather/arduinolibs)
