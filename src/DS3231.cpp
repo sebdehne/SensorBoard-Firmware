@@ -234,8 +234,8 @@ bool DS3231Class::setTimeInternal(DateTime dateTime, bool writeAlarm1)
     else
     {
         // initial time setup
-        reg1 = 0b00011100;
-        reg2 = 0b00000000;
+        reg1 = 0b00011101; // keep A1IE 1
+        reg2 = 0b00000001; // keep A1F 1
     }
 
     // Write back control registers:
