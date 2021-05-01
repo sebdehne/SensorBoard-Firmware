@@ -8,6 +8,14 @@ TempAndHumidity ChipCap2Class::read()
     TempAndHumidity result;
     result.error = true;
 
+#ifdef DEBUG
+    // send MR when not powering down
+    Wire.beginTransmission(i2c_addr);
+    Wire.endTransmission(true);
+    delay(50); // tested that 10 is too short. 50 works.
+#endif
+
+    // read temp/humidity
     Wire.requestFrom(i2c_addr, 4);
 
     if (!Wire.available())
@@ -16,6 +24,14 @@ TempAndHumidity ChipCap2Class::read()
         return result;
     }
     result.humidity = Wire.read();
+
+    if (result.humidity & (1 << 6)) {
+        Log.log("Stale data received");
+    }
+    if (result.humidity & (1 << 7)) {
+        Log.log("In Command mode");
+    }
+
     result.humidity = result.humidity << 8;
     if (!Wire.available())
     {
@@ -23,7 +39,7 @@ TempAndHumidity ChipCap2Class::read()
         return result;
     }
     result.humidity += Wire.read();
-    // ignore status bits:
+    // remove status bits:
     result.humidity = result.humidity & 0b11111111111111;
 
     if (!Wire.available())
