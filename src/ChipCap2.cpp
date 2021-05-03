@@ -12,7 +12,7 @@ TempAndHumidity ChipCap2Class::read()
     // send MR when not powering down
     Wire.beginTransmission(i2c_addr);
     Wire.endTransmission(true);
-    delay(50); // tested that 10 is too short. 50 works.
+    delay(100); // tested that 10 is too short. 50 works but humidity is 99% then... 100: works
 #endif
 
     // read temp/humidity

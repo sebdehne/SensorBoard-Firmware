@@ -67,7 +67,7 @@ void setup()
         if (!DS3231.setTime(inboundPacketHeader.timestamp))
         {
           Log.log("Could not set time");
-          delay(1000);
+          delay(10000);
         }
         else
         {
