@@ -214,7 +214,7 @@ void SmartHomeServerClientClass::upgradeFirmware()
     uint8_t receiveBuffer[maxFirmwareBytesPerResponse + 1];
     unsigned long awaitingIncomingBytes = 0;
     int sequentNumber = 0;
-    int retryAttempts = LORA_RETRY_COUNT;
+    int retryAttempts = LORA_RETRY_FIRMWARE_COUNT;
     bool failed = false;
     while (true)
     {

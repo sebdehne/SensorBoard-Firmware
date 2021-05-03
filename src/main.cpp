@@ -139,7 +139,9 @@ void loop()
   // 2) set alarm (=> cuts the power)
   if (!DS3231.setAlarm1(sleepTimeInSeconds))
   {
-    Log.log("Could not set alarm");
+    Log.log("Could not set alarm, resetting in 10 seconds...");
+    delay(10000);
+    NVIC_SystemReset();
   }
 
 #ifdef DEBUG

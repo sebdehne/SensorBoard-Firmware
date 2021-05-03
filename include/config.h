@@ -1,4 +1,4 @@
-#define FIRMWARE_VERSION 4
+#define FIRMWARE_VERSION 5
 
 // reserve flash (in bytes) for firmware and userspace
 #define FIRMWARE_SIZE 40000 // should be large enough to hold the firmware
@@ -9,3 +9,4 @@
 
 #define LORA_RETRY_DELAY random(0, 500)
 #define LORA_RETRY_COUNT 5
+#define LORA_RETRY_FIRMWARE_COUNT 30
