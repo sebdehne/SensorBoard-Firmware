@@ -150,7 +150,10 @@ void loop()
   }
 #endif
   delay(sleepTimeInSeconds * 1000);
+
+#ifndef DEBUG
   NVIC_SystemReset();
+#endif
 }
 
 void ledOn()
