@@ -140,21 +140,17 @@ void loop()
   if (!DS3231.setAlarm1(sleepTimeInSeconds))
   {
     Log.log("Could not set alarm, resetting in 10 seconds...");
-    delay(10000);
-    NVIC_SystemReset();
+    // well, then we just sleep with power on...
   }
 
-#ifdef DEBUG
-  delay(sleepTimeInSeconds * 1000);
-#endif
 #ifndef DEBUG
   if (initialSetup)
   {
     ledOn();
   }
-  while (1)
-    ;
 #endif
+  delay(sleepTimeInSeconds * 1000);
+  NVIC_SystemReset();
 }
 
 void ledOn()
