@@ -68,7 +68,7 @@ SensorDataResponse SmartHomeServerClientClass::receiveSensorDataResponse()
     SensorDataResponse sensorDataResponse;
     sensorDataResponse.receiveError = true;
 
-    InboundPacketHeader inboundPacketHeader = receiveMessage(payload, sizeof(payload), 2000);
+    InboundPacketHeader inboundPacketHeader = receiveMessage(payload, sizeof(payload), 1000);
     if (inboundPacketHeader.receiveError)
     {
         return sensorDataResponse;
@@ -303,7 +303,7 @@ void SmartHomeServerClientClass::upgradeFirmware()
             awaitingIncomingBytes--;
         }
         sequentNumber++;
-        retryAttempts = LORA_RETRY_COUNT;
+        retryAttempts = LORA_RETRY_FIRMWARE_COUNT;
 
         if (bytesWrittenToFlash == firmwareInfoResponse.totalLength)
         {
@@ -328,7 +328,7 @@ FirmwareInfoResponse SmartHomeServerClientClass::getFirmwareInfo()
     FirmwareInfoResponse firmwareInfoResponse;
     firmwareInfoResponse.receiveError = true;
 
-    for (int i = 0; i < LORA_RETRY_COUNT; i++)
+    for (int i = 0; i < LORA_RETRY_FIRMWARE_COUNT; i++)
     {
         uint8_t payload[0];
         if (sendMessage(4, payload, 0))

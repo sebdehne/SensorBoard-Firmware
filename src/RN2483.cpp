@@ -24,7 +24,7 @@ void RN2483Class::setup()
         // reset D2
         pinMode(2, OUTPUT);
         digitalWrite(2, LOW);
-        delay(500); // TODO too long
+        delay(50);
         digitalWrite(2, HIGH);
         Serial1.begin(57600);
 
