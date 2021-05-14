@@ -1,4 +1,4 @@
-#define FIRMWARE_VERSION 7
+#define FIRMWARE_VERSION 8
 
 // reserve flash (in bytes) for firmware and userspace
 #define FIRMWARE_SIZE 40000 // should be large enough to hold the firmware

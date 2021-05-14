@@ -10,6 +10,7 @@ struct InboundPacketHeader
     bool receiveError;
     uint8_t type;
     uint8_t to;
+    uint8_t from;
     unsigned long timestamp;
     unsigned long payloadLength;
 };

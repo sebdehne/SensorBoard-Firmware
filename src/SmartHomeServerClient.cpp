@@ -31,7 +31,7 @@ InboundPacketHeader SmartHomeServerClientClass::receivePong()
         return inboundPacketHeader;
     }
 
-    if (inboundPacketHeader.type == 1 && ping_data[0] == FIRMWARE_VERSION)
+    if (inboundPacketHeader.type == 1 && inboundPacketHeader.from == 1 && ping_data[0] == FIRMWARE_VERSION)
     {
         Log.log("Pong response valid!!!!!!!!!!!!!");
         loraAddr = inboundPacketHeader.to;
@@ -136,6 +136,7 @@ InboundPacketHeader SmartHomeServerClientClass::receiveMessage(
         }
         inboundPacketHeader.type = receiveBuffer[2];
         inboundPacketHeader.to = receiveBuffer[0];
+        inboundPacketHeader.from = receiveBuffer[1];
         inboundPacketHeader.timestamp = toUInt(receiveBuffer, 3);
         inboundPacketHeader.payloadLength = toUInt(receiveBuffer, 7);
         if (inboundPacketHeader.payloadLength > payloadBufferLength)

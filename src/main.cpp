@@ -137,10 +137,14 @@ void loop()
   }
 
   // 2) set alarm (=> cuts the power)
-  if (!DS3231.setAlarm1(sleepTimeInSeconds))
+  for (int i = 0; i < 5; i++)
   {
-    Log.log("Could not set alarm, resetting in 10 seconds...");
-    // well, then we just sleep with power on...
+    if (DS3231.setAlarm1(sleepTimeInSeconds))
+    {
+      break;
+    }
+    Log.log("Could not set alarm");
+    delay(LORA_RETRY_DELAY);
   }
 
 #ifndef DEBUG
