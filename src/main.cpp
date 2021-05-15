@@ -14,7 +14,7 @@ void blink(int times, int delayMS);
 void ledOff();
 void ledOn();
 char buf[100];
-unsigned long sleepTimeInSeconds = 20;
+unsigned long sleepTimeInSeconds = 300;
 bool initialSetup = false;
 
 void setup()
