@@ -38,6 +38,7 @@ InboundPacketHeader SmartHomeServerClientClass::receivePong()
     }
     else
     {
+        inboundPacketHeader.receiveError = true;
         Log.log("Pong response invalid");
     }
     return inboundPacketHeader;
