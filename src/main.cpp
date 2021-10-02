@@ -127,9 +127,7 @@ void loop()
         if (sensorDataResponse.triggerReset)
         {
           Log.log("Performing reset");
-          FlashUtils.prepareWritingUserdata();
-          FlashUtils.write(255);
-          FlashUtils.finishWriting();
+          FlashUtils.prepareWritingUserdata(); // just erase
           delay(LORA_RETRY_DELAY);
           NVIC_SystemReset();
         }

@@ -29,7 +29,6 @@ private:
     unsigned long calcSecondsSince2000(DateTime dateTime);
     DateTime calcDateTime(unsigned long secondsSince2000);
     bool setTimeInternal(DateTime dateTime, bool writeAlarm1);
-    void logTime(DateTime dateTime);
 
 public:
     DS3231Class();
@@ -40,6 +39,7 @@ public:
     // setting the time clears also the alarms
     bool setTime(unsigned long secondsSince2000);
     bool setAlarm1(unsigned long deltaSeconds);
+    void logTime(DateTime dateTime);
 };
 
 extern DS3231Class DS3231;

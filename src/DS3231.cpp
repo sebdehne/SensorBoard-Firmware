@@ -2,7 +2,6 @@
 
 DS3231Class::DS3231Class() {}
 
-
 bool DS3231Class::hasTime()
 {
     // Change addr-pointer to 0x0F (control byte)
@@ -103,7 +102,7 @@ DateTime DS3231Class::readTime()
     }
     read = Wire.read();
     dateTime.month = read & 0b1111;
-    if (read & 0x10000)
+    if (read & 0b10000)
     {
         dateTime.month += 10;
     }
@@ -282,6 +281,7 @@ DateTime DS3231Class::calcDateTime(unsigned long secondsSince2000)
 {
 
     DateTime dateTime;
+    dateTime.weekDay = 0; // not used
 
     unsigned long days = secondsSince2000 / 86400;
     int remainingSeconds = secondsSince2000 % 86400;
@@ -361,7 +361,8 @@ bool DS3231Class::setTime(unsigned long secondsSince2000)
 bool DS3231Class::setAlarm1(unsigned long deltaSeconds)
 {
     DateTime dateTime = readTime();
-    if (dateTime.error) {
+    if (dateTime.error)
+    {
         return false;
     }
     unsigned long alarmAt = dateTime.secondsSince2000 + deltaSeconds;
@@ -385,18 +386,17 @@ bool DS3231Class::setAddrForRead(byte addr)
     }
 }
 
-void DS3231Class::logTime(DateTime dateTime) 
+void DS3231Class::logTime(DateTime dateTime)
 {
     char buf[1000];
-    snprintf(buf, sizeof(buf), "Y:%u M:%u D:%u WD:%u - H:%u M:%u S:%u", 
-        dateTime.year,
-        dateTime.month,
-        dateTime.date,
-        dateTime.weekDay,
-        dateTime.hour,
-        dateTime.minutes,
-        dateTime.seconds
-    );
+    snprintf(buf, sizeof(buf), "Y:%u M:%u D:%u WD:%u - H:%u M:%u S:%u",
+             dateTime.year,
+             dateTime.month,
+             dateTime.date,
+             dateTime.weekDay,
+             dateTime.hour,
+             dateTime.minutes,
+             dateTime.seconds);
     Log.log(buf);
 }
 

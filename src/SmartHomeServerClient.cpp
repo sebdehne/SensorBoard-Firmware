@@ -65,7 +65,7 @@ bool SmartHomeServerClientClass::sendSensorData(
 
 SensorDataResponse SmartHomeServerClientClass::receiveSensorDataResponse()
 {
-    uint8_t payload[6];
+    uint8_t payload[7];
     SensorDataResponse sensorDataResponse;
     sensorDataResponse.receiveError = true;
 
@@ -182,6 +182,7 @@ bool SmartHomeServerClientClass::sendMessage(uint8_t type, unsigned char *payloa
         return false;
     }
     DateTime time = DS3231.readTime();
+    DS3231.logTime(time);
 
     data[0] = 1;         // to addr
     data[1] = loraAddr;  // from addr
