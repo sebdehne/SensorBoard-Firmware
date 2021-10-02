@@ -60,7 +60,7 @@ bool SmartHomeServerClientClass::sendSensorData(
     writeUint32(sleepTimeInSeconds, payload, 16);
     payload[20] = firmwareVersion;
 
-    return sendMessage(2, payload, sizeof(payload));
+    return sendMessage(18, payload, sizeof(payload));
 }
 
 SensorDataResponse SmartHomeServerClientClass::receiveSensorDataResponse()
@@ -81,7 +81,7 @@ SensorDataResponse SmartHomeServerClientClass::receiveSensorDataResponse()
         return sensorDataResponse;
     }
 
-    if (inboundPacketHeader.type != 3)
+    if (inboundPacketHeader.type != 19)
     {
         Log.log("Invalid response type received");
         return sensorDataResponse;
@@ -90,15 +90,17 @@ SensorDataResponse SmartHomeServerClientClass::receiveSensorDataResponse()
     sensorDataResponse.receiveError = false;
     sensorDataResponse.firmwareUpdateRequired = payload[0];
     sensorDataResponse.timeAdjustmentRequired = payload[1];
-    sensorDataResponse.sleepTimeInSeconds = toUInt(payload, 2);
+    sensorDataResponse.triggerReset = payload[2];
+    sensorDataResponse.sleepTimeInSeconds = toUInt(payload, 3);
     sensorDataResponse.timestamp = inboundPacketHeader.timestamp;
     char buf[100];
     snprintf(
         buf,
         sizeof(buf),
-        "SensorDataResponse received. updateFirmware=%d adjustTime=%d sleepTimeInSeconds=%lu",
+        "SensorDataResponse received. updateFirmware=%d adjustTime=%d triggerReset=%d sleepTimeInSeconds=%lu",
         sensorDataResponse.firmwareUpdateRequired,
         sensorDataResponse.timeAdjustmentRequired,
+        sensorDataResponse.triggerReset,
         sensorDataResponse.sleepTimeInSeconds);
     Log.log(buf);
 

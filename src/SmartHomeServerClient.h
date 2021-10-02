@@ -20,6 +20,7 @@ struct SensorDataResponse
     bool receiveError;
     bool firmwareUpdateRequired;
     bool timeAdjustmentRequired;
+    bool triggerReset;
     unsigned long sleepTimeInSeconds;
     unsigned long timestamp;
 };

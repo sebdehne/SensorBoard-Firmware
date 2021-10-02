@@ -124,6 +124,15 @@ void loop()
           Log.log("Adjusting time now");
           DS3231.setTime(sensorDataResponse.timestamp);
         }
+        if (sensorDataResponse.triggerReset)
+        {
+          Log.log("Performing reset");
+          FlashUtils.prepareWritingUserdata();
+          FlashUtils.write(255);
+          FlashUtils.finishWriting();
+          delay(LORA_RETRY_DELAY);
+          NVIC_SystemReset();
+        }
         if (sensorDataResponse.firmwareUpdateRequired)
         {
           SmartHomeServerClient.upgradeFirmware();

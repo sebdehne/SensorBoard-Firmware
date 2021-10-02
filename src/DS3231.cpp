@@ -349,7 +349,12 @@ DateTime DS3231Class::calcDateTime(unsigned long secondsSince2000)
 
 bool DS3231Class::setTime(unsigned long secondsSince2000)
 {
+    char buf[1000];
+    snprintf(buf, sizeof(buf), "Adjusting time from %lu", secondsSince2000);
+    Log.log(buf);
+
     DateTime dateTime = calcDateTime(secondsSince2000);
+    logTime(dateTime);
     return setTimeInternal(dateTime, false);
 }
 
@@ -378,6 +383,21 @@ bool DS3231Class::setAddrForRead(byte addr)
     {
         return true;
     }
+}
+
+void DS3231Class::logTime(DateTime dateTime) 
+{
+    char buf[1000];
+    snprintf(buf, sizeof(buf), "Y:%u M:%u D:%u WD:%u - H:%u M:%u S:%u", 
+        dateTime.year,
+        dateTime.month,
+        dateTime.date,
+        dateTime.weekDay,
+        dateTime.hour,
+        dateTime.minutes,
+        dateTime.seconds
+    );
+    Log.log(buf);
 }
 
 DS3231Class DS3231;

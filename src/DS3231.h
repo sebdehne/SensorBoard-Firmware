@@ -2,6 +2,7 @@
 #define _DS3231_H
 #include <Arduino.h>
 #include "Wire.h"
+#include "logger.h"
 
 
 struct DateTime
@@ -28,6 +29,7 @@ private:
     unsigned long calcSecondsSince2000(DateTime dateTime);
     DateTime calcDateTime(unsigned long secondsSince2000);
     bool setTimeInternal(DateTime dateTime, bool writeAlarm1);
+    void logTime(DateTime dateTime);
 
 public:
     DS3231Class();
