@@ -50,17 +50,19 @@ bool SmartHomeServerClientClass::sendSensorData(
     unsigned long adcBattery,
     unsigned long adcLight,
     unsigned long sleepTimeInSeconds,
-    uint8_t firmwareVersion)
+    uint8_t firmwareVersion,
+    bool temperatureError)
 {
-    uint8_t payload[5 * 4 + 1];
+    uint8_t payload[5 * 4 + 2];
     writeUint32(temp, payload, 0);
     writeUint32(humidity, payload, 4);
     writeUint32(adcBattery, payload, 8);
     writeUint32(adcLight, payload, 12);
     writeUint32(sleepTimeInSeconds, payload, 16);
     payload[20] = firmwareVersion;
+    payload[21] = temperatureError;
 
-    return sendMessage(18, payload, sizeof(payload));
+    return sendMessage(21, payload, sizeof(payload));
 }
 
 SensorDataResponse SmartHomeServerClientClass::receiveSensorDataResponse()

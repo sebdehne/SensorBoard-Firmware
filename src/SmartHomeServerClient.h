@@ -59,7 +59,8 @@ public:
         unsigned long adcBattery,
         unsigned long adcLight,
         unsigned long sleepTimeInSeconds,
-        uint8_t firmwareVersion);
+        uint8_t firmwareVersion,
+        bool temperatureError);
     SensorDataResponse receiveSensorDataResponse();
 
     void upgradeFirmware();

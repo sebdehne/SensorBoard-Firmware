@@ -108,7 +108,8 @@ void loop()
         adcBattery,
         adcLight,
         sleepTimeInSeconds,
-        FIRMWARE_VERSION);
+        FIRMWARE_VERSION,
+        tempAndHumidity.error);
     if (sent)
     {
       SensorDataResponse sensorDataResponse = SmartHomeServerClient.receiveSensorDataResponse();
