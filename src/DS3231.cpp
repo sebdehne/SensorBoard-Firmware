@@ -248,7 +248,7 @@ bool DS3231Class::setTimeInternal(DateTime dateTime, bool writeAlarm1)
 
 unsigned long DS3231Class::calcSecondsSince2000(DateTime dateTime)
 {
-    unsigned long leapYears = (dateTime.year / 4) + 1;
+    unsigned long leapYears = (dateTime.year / 4);
     unsigned long nonLeapYears = dateTime.year - leapYears;
     unsigned long days = (leapYears * 366) + (nonLeapYears * 365);
 
