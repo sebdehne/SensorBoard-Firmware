@@ -24,6 +24,8 @@ class DS3231Class
 {
 private:
     const byte i2c_addr = 104;
+    int days4Years = 3 * 365 + 366;
+    unsigned int daysInYears[3] = {366, 365, 365};
 
     bool setAddrForRead(byte addr);
     unsigned long calcSecondsSince2000(DateTime dateTime);
